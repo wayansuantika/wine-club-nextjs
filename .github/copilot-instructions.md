@@ -58,7 +58,7 @@ Expected packages:
 ### Step 2: Environment Setup
 Copy `.env.example` to `.env` and update with actual values:
 ```env
-MONGODB_URI=mongodb+srv://admin_db_user:dS1pHkN4iWKABXmN@cluster0.mgflklf.mongodb.net/club_wine
+MONGODB_URI=(Your_URL)
 JWT_SECRET=<your-secret-key>
 XENDIT_SECRET_KEY=<your-xendit-key>
 XENDIT_WEBHOOK_TOKEN=<your-webhook-token>
