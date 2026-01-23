@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wine Club (Next.js)
+
+A Next.js based wine club application using Xendit for payments and MongoDB for data storage.  
+Built with TypeScript, Tailwind CSS, and the Next.js App Router.
+
+## What This Is
+
+This project is a wine club web application designed for subscription or membership-based sales.  
+It provides a solid starting point for handling user access, payments, and content.
+
+Use this project for:
+- Wine club subscriptions
+- Member-only pages
+- Online checkout using Xendit
+
+## Tech Stack
+
+- Next.js (App Router)
+- React
+- TypeScript
+- Tailwind CSS
+- MongoDB
+- Xendit API
+
+## Features
+
+Core functionality includes:
+- Public pages (home, product, profile)
+- User authentication
+- Checkout and payment processing via Xendit
+- Membership or subscription logic
+- MongoDB models for users, orders, and products
 
 ## Getting Started
 
-First, run the development server:
+### Clone the Repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/wayansuantika/wine-club-nextjs.git
+cd wine-club-nextjs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Install Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment Setup
+Create a .env.local file in the root directory:
+```bash
+MONGODB_URI=your_mongodb_connection_string
+NEXT_PUBLIC_XENDIT_API_KEY=your_xendit_public_key
+XENDIT_SECRET_KEY=your_xendit_secret_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Run Development Server
+```bash
+npm run dev
+```
 
-## Learn More
+### Open the app at:
+```arduino
+http://localhost:3000
+```
+### Build for Production
+```bash
+npm run build
+npm start
+```
+The project can be deployed easily on platforms like Vercel.
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
+```vbnet
+/app        Next.js routes and layouts
+/lib        Database connections and helpers
+/public     Static assets
+/types      Shared TypeScript types
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Notes
+- Xendit payments will not work without valid API credentials.
+- MongoDB must be accessible before starting the app.
+- Tailwind CSS is preconfigured.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Contributing
+Fork the repository, create a feature branch, and submit a pull request.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+License
+MIT License
