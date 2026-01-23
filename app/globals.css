@@ -1,26 +1,81 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #111827;
+    --background: #ffffff;
+    
+    /* Primary Wine Club Brand Colors */
+    --color-primary-50: #f0f4f5;
+    --color-primary-100: #d9e3e6;
+    --color-primary-200: #b3c7cd;
+    --color-primary-300: #8daab4;
+    --color-primary-400: #678e9b;
+    --color-primary-500: #4F6D7A;
+    --color-primary-600: #3f5762;
+    --color-primary-700: #2f4149;
+    --color-primary-800: #202c31;
+    --color-primary-900: #101618;
+
+    /* Accent/Success Colors */
+    --color-accent-50: #f2f7f6;
+    --color-accent-100: #d9eae6;
+    --color-accent-200: #b3d5cd;
+    --color-accent-300: #a6cec2;
+    --color-accent-400: #8dbfb4;
+    --color-accent-500: #7FA99B;
+    --color-accent-600: #66877c;
+    --color-accent-700: #4d655d;
+    --color-accent-800: #33443e;
+    --color-accent-900: #1a221f;
+
+    /* Error/Warning Colors */
+    --color-error-50: #fdf2f2;
+    --color-error-100: #f9d9d9;
+    --color-error-200: #f3b3b3;
+    --color-error-300: #ed8d8d;
+    --color-error-400: #c87474;
+    --color-error-500: #B85C5C;
+    --color-error-600: #934a4a;
+    --color-error-700: #6e3737;
+    --color-error-800: #4a2525;
+    --color-error-900: #251212;
+
+    /* Neutral Grays */
+    --color-neutral-50: #f9fafb;
+    --color-neutral-100: #f3f4f6;
+    --color-neutral-200: #e5e7eb;
+    --color-neutral-300: #d1d5db;
+    --color-neutral-400: #9ca3af;
+    --color-neutral-500: #6b7280;
+    --color-neutral-600: #4b5563;
+    --color-neutral-700: #374151;
+    --color-neutral-800: #1f2937;
+    --color-neutral-900: #111827;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --foreground: #f9fafb;
+      --background: #111827;
+    }
+  }
+
+  body {
+    color: var(--foreground);
+    background: var(--background);
+    font-family: var(--font-geist-sans);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-700) 100%);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, var(--color-accent-400) 0%, var(--color-accent-600) 100%);
+  }
 }
