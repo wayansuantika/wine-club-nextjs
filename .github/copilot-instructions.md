@@ -1,10 +1,7 @@
-# Wine Club Next.js Migration - Complete Guide
+# Wine Club Next.js - Complete Guide
 
 ## 🎯 Project Overview
 **FULL REWRITE** from HTML/Express to Next.js 14 + TypeScript + Tailwind CSS
-
-**Source:** `C:\Users\Wayan\Documents\Project\club-wine-2` (reference only, don't modify)
-**Destination:** `C:\Users\Wayan\Documents\Project\wineclub-nextjs` (this workspace)
 
 ## 📊 Migration Status
 
@@ -30,7 +27,7 @@
 
 **MongoDB Atlas:**
 ```
-URI: mongodb+srv://admin_db_user:dS1pHkN4iWKABXmN@cluster0.mgflklf.mongodb.net/club_wine
+URI: (YOUR URL)
 Database: club_wine
 Collections: Users, Events, Points, Subscriptions, Payments, EventRegistrations, PointsHistory, AdminLogs, Webhooks
 ```
@@ -110,7 +107,6 @@ export interface Subscription {
 ```
 
 ### Step 4: Database Layer
-**Reference:** `club-wine-2/mongodb.js` and `club-wine-2/models.js`
 
 Create `lib/db/mongodb.ts`:
 - Copy MongoDB connection logic
