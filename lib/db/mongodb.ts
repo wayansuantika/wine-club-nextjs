@@ -51,7 +51,7 @@ export const UserDB = {
     return await models.User.findById(userId);
   },
 
-  updateProfile: async (userId: string, profileData: any) => {
+  updateProfile: async (userId: string, profileData: Record<string, unknown>) => {
     await connectDB();
     profileData.updated_at = new Date();
     return await models.User.findByIdAndUpdate(userId, profileData, { new: true });
@@ -83,7 +83,7 @@ export const UserDB = {
 
 // Subscription operations
 export const SubscriptionDB = {
-  create: async (subscriptionData: any) => {
+  create: async (subscriptionData: Record<string, unknown>) => {
     await connectDB();
     const subscription = new models.Subscription(subscriptionData);
     await subscription.save();
@@ -102,7 +102,7 @@ export const SubscriptionDB = {
 
   updateStatus: async (subscriptionId: string, status: string, nextPaymentDate: Date | null = null) => {
     await connectDB();
-    const update: any = { status, updated_at: new Date() };
+    const update: { status: string; updated_at: Date; next_payment_date?: Date } = { status, updated_at: new Date() };
     if (nextPaymentDate) update.next_payment_date = nextPaymentDate;
     return await models.Subscription.findByIdAndUpdate(subscriptionId, update, { new: true });
   },
@@ -110,6 +110,11 @@ export const SubscriptionDB = {
   getAll: async () => {
     await connectDB();
     return await models.Subscription.find().populate('user_id').sort({ created_at: -1 });
+  },
+
+  deleteById: async (subscriptionId: string) => {
+    await connectDB();
+    return await models.Subscription.findByIdAndDelete(subscriptionId);
   }
 };
 
@@ -239,7 +244,7 @@ export const PointsDB = {
 
 // Payment operations
 export const PaymentDB = {
-  create: async (paymentData: any) => {
+  create: async (paymentData: Record<string, unknown>) => {
     await connectDB();
     const payment = new models.Payment(paymentData);
     await payment.save();
@@ -253,7 +258,7 @@ export const PaymentDB = {
 
   updateStatus: async (paymentId: string, status: string, paidAt: Date | null = null) => {
     await connectDB();
-    const update: any = { status };
+    const update: { status: string; paid_at?: Date } = { status };
     if (paidAt) update.paid_at = paidAt;
     return await models.Payment.findByIdAndUpdate(paymentId, update, { new: true });
   },
@@ -275,7 +280,7 @@ export const PaymentDB = {
 
 // Webhook operations
 export const WebhookDB = {
-  log: async (eventType: string, xenditId: string, status: string, payload: any) => {
+  log: async (eventType: string, xenditId: string, status: string, payload: unknown) => {
     await connectDB();
     const log = new models.WebhookLog({
       event_type: eventType,
@@ -289,7 +294,7 @@ export const WebhookDB = {
 
   markProcessed: async (logId: string, error: string | null = null) => {
     await connectDB();
-    const update: any = { processed: true };
+    const update: { processed: boolean; error?: string } = { processed: true };
     if (error) update.error = error;
     return await models.WebhookLog.findByIdAndUpdate(logId, update);
   },
@@ -304,7 +309,7 @@ export const WebhookDB = {
 
 // Event operations
 export const EventDB = {
-  create: async (eventData: any) => {
+  create: async (eventData: Record<string, unknown>) => {
     await connectDB();
     const event = new models.Event(eventData);
     await event.save();
@@ -322,7 +327,7 @@ export const EventDB = {
     return await models.Event.findById(eventId);
   },
 
-  update: async (eventId: string, eventData: any) => {
+  update: async (eventId: string, eventData: Record<string, unknown>) => {
     await connectDB();
     return await models.Event.findByIdAndUpdate(eventId, eventData, { new: true });
   },
@@ -336,6 +341,13 @@ export const EventDB = {
     await connectDB();
     return await models.EventRegistration.find({ user_id: userId })
       .populate('event_id')
+      .sort({ registered_at: -1 });
+  },
+
+  getEventRegistrations: async (eventId: string) => {
+    await connectDB();
+    return await models.EventRegistration.find({ event_id: eventId })
+      .populate('user_id', 'email full_name')
       .sort({ registered_at: -1 });
   },
 
@@ -357,11 +369,30 @@ export const EventDB = {
       throw new Error('Event is full');
     }
 
+    // Generate unique reservation code
+    let reservationCode = '';
+    let isUnique = false;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    
+    while (!isUnique) {
+      reservationCode = 'RES-';
+      for (let i = 0; i < 8; i++) {
+        reservationCode += chars[Math.floor(Math.random() * chars.length)];
+      }
+      
+      // Check if code already exists
+      const existingCode = await models.EventRegistration.findOne({ reservation_code: reservationCode });
+      if (!existingCode) {
+        isUnique = true;
+      }
+    }
+
     // Register
     const registration = new models.EventRegistration({
       user_id: userId,
       event_id: eventId,
-      points_spent: pointsSpent
+      points_spent: pointsSpent,
+      reservation_code: reservationCode
     });
     await registration.save();
 
@@ -382,7 +413,7 @@ export const EventDB = {
 
 // Admin operations
 export const AdminDB = {
-  logAction: async (adminId: string, action: string, targetType: string, targetId: string, details: any) => {
+  logAction: async (adminId: string, action: string, targetType: string, targetId: string, details: unknown) => {
     await connectDB();
     const log = new models.AdminLog({
       admin_id: adminId,
@@ -427,5 +458,28 @@ export const AdminDB = {
       totalEvents,
       upcomingEvents
     };
+  }
+};
+
+// App Config operations
+export const AppConfigDB = {
+  getByKey: async (key: string) => {
+    await connectDB();
+    return await models.AppConfig.findOne({ key });
+  },
+
+  upsert: async (key: string, value: unknown, updatedBy?: string) => {
+    await connectDB();
+    return await models.AppConfig.findOneAndUpdate(
+      { key },
+      {
+        $set: {
+          value,
+          updated_at: new Date(),
+          ...(updatedBy ? { updated_by: updatedBy } : {})
+        }
+      },
+      { upsert: true, new: true }
+    );
   }
 };

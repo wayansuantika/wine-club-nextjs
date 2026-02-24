@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { apiCall } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -21,6 +22,19 @@ interface Event {
   status: string;
 }
 
+interface Registration {
+  _id: string;
+  user_id: {
+    _id: string;
+    email: string;
+    full_name?: string;
+  };
+  points_spent: number;
+  reservation_code: string;
+  status: string;
+  registered_at: string;
+}
+
 interface User {
   id: string;
   email: string;
@@ -33,12 +47,25 @@ interface User {
 
 interface Payment {
   _id: string;
-  user_id: any;
+  user_id?: {
+    email?: string;
+  } | null;
   amount: number;
   status: string;
   payment_method: string;
   created_at: string;
   paid_at?: string;
+}
+
+interface EventFormData {
+  title: string;
+  description: string;
+  location: string;
+  event_date: string;
+  points_cost: number;
+  max_attendees: number;
+  image_url: string;
+  status: string;
 }
 
 interface Webhook {
@@ -63,6 +90,10 @@ export default function AdminPage() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showRegistrationsModal, setShowRegistrationsModal] = useState(false);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [registrationsEvent, setRegistrationsEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     loadAuth();
@@ -85,6 +116,7 @@ export default function AdminPage() {
     }
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user, activeTab, router, authChecked]);
 
   const loadData = async () => {
@@ -149,7 +181,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleCreateEvent = async (eventData: any) => {
+  const handleCreateEvent = async (eventData: EventFormData) => {
     try {
       const response = await apiCall('/api/admin/events', {
         method: 'POST',
@@ -171,7 +203,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleUpdateEvent = async (eventId: string, eventData: any) => {
+  const handleUpdateEvent = async (eventId: string, eventData: EventFormData) => {
     try {
       const response = await apiCall(`/api/admin/events/${eventId}`, {
         method: 'PUT',
@@ -216,6 +248,28 @@ export default function AdminPage() {
     }
   };
 
+  const handleViewRegistrations = async (eventItem: Event) => {
+    setRegistrationsEvent(eventItem);
+    setShowRegistrationsModal(true);
+    setRegistrationsLoading(true);
+    try {
+      const response = await apiCall(`/api/admin/events/${eventItem._id}/registrations`);
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to load registrations');
+        setRegistrations([]);
+        return;
+      }
+      setRegistrations(data.registrations || []);
+    } catch (error) {
+      console.error('Registrations fetch error:', error);
+      toast.error('An error occurred while loading registrations');
+      setRegistrations([]);
+    } finally {
+      setRegistrationsLoading(false);
+    }
+  };
+
   const handleAdjustPoints = async (userId: string, amount: number, reason: string) => {
     try {
       const response = await apiCall('/api/admin/users/points', {
@@ -236,6 +290,30 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Points adjustment error:', error);
       toast.error('An error occurred');
+    }
+  };
+
+  const handleMigrateReservationCodes = async () => {
+    if (!confirm('This will generate reservation codes for all existing registrations. Continue?')) {
+      return;
+    }
+
+    const loadingToast = toast.loading('Migrating reservation codes...');
+    try {
+      const response = await apiCall('/api/admin/migrate-reservation-codes', {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to migrate codes', { id: loadingToast });
+        return;
+      }
+
+      toast.success(`Successfully updated ${data.updated} registrations`, { id: loadingToast });
+    } catch (error) {
+      console.error('Migration error:', error);
+      toast.error('An error occurred during migration', { id: loadingToast });
     }
   };
 
@@ -276,14 +354,35 @@ export default function AdminPage() {
       <header className="bg-black/20 backdrop-blur-sm border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-colors border border-white/20"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogout}
+              className="bg-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-colors border border-white/20"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
+
+      <section className="container mx-auto px-4 py-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link
+            href="/admin/settings/subscription-plans"
+            className="group rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10"
+          >
+            <div className="text-base font-semibold text-white">Subscription Plans</div>
+            <div className="text-sm text-white/70">Manage all subscription plans</div>
+          </Link>
+          <Link
+            href="/admin/settings/auth-banners"
+            className="group rounded-xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10"
+          >
+            <div className="text-base font-semibold text-white">Auth Banner Settings</div>
+            <div className="text-sm text-white/70">Manage login and register banner image URLs</div>
+          </Link>
+        </div>
+      </section>
 
       {/* Tabs */}
       <div className="bg-black/10 backdrop-blur-sm border-b border-white/10">
@@ -317,16 +416,27 @@ export default function AdminPage() {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-white">Events Management</h2>
-                  <button
-                    onClick={() => setShowEventModal(true)}
-                    className="gradient-primary text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity font-medium"
-                  >
-                    + Create Event
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleMigrateReservationCodes}
+                      className="bg-white/10 backdrop-blur-sm text-white px-4 py-3 rounded-lg hover:bg-white/20 transition-colors border border-white/20 text-sm font-medium"
+                      title="Generate reservation codes for existing registrations"
+                    >
+                      Migrate Codes
+                    </button>
+                    <button
+                      onClick={() => setShowEventModal(true)}
+                      className="gradient-primary text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity font-medium"
+                    >
+                      + Create Event
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {events.map((event) => (
+                  {[...events]
+                    .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
+                    .map((event) => (
                     <div key={event._id} className="bg-white dark:bg-neutral-900 rounded-xl p-6 shadow-lg">
                       <h3 className="text-xl font-bold text-primary-700 dark:text-primary-400 mb-2">
                         {event.title}
@@ -335,9 +445,18 @@ export default function AdminPage() {
                         {new Date(event.event_date).toLocaleDateString()}
                       </p>
                       <div className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300 mb-4">
-                        <p>📍 {event.location}</p>
-                        <p>💰 {event.points_cost.toLocaleString()} points</p>
-                        <p>👥 {event.current_attendees} / {event.max_attendees}</p>
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-sm leading-none">location_on</span>
+                          <span>{event.location}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-sm leading-none">payments</span>
+                          <span>{event.points_cost.toLocaleString()} points</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-sm leading-none">groups</span>
+                          <span>{event.current_attendees} / {event.max_attendees}</span>
+                        </div>
                         <p>
                           Status: <span className={`font-semibold ${
                             event.status === 'UPCOMING' ? 'text-accent-500' :
@@ -346,7 +465,7 @@ export default function AdminPage() {
                           }`}>{event.status}</span>
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => {
                             setEditingEvent(event);
@@ -355,6 +474,12 @@ export default function AdminPage() {
                           className="flex-1 bg-primary-100 text-primary-700 px-4 py-2 rounded-lg hover:bg-primary-200 transition-colors text-sm font-medium"
                         >
                           Edit
+                        </button>
+                        <button
+                          onClick={() => handleViewRegistrations(event)}
+                          className="flex-1 bg-accent-100 text-accent-700 px-4 py-2 rounded-lg hover:bg-accent-200 transition-colors text-sm font-medium"
+                        >
+                          Members
                         </button>
                         <button
                           onClick={() => handleDeleteEvent(event._id)}
@@ -373,6 +498,7 @@ export default function AdminPage() {
             {activeTab === 'users' && (
               <div>
                 <h2 className="text-2xl font-bold text-white mb-6">Users Management</h2>
+
                 <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-lg overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-primary-100 dark:bg-primary-900">
@@ -381,6 +507,7 @@ export default function AdminPage() {
                         <th className="px-6 py-4 text-left text-sm font-semibold text-primary-900 dark:text-primary-100">Status</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-primary-900 dark:text-primary-100">Points</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-primary-900 dark:text-primary-100">Actions</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-primary-900 dark:text-primary-100">Registered Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -401,25 +528,36 @@ export default function AdminPage() {
                             {user.points_balance.toLocaleString()}
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
                               <button
                                 onClick={() => {
                                   setSelectedUser(user);
                                   setShowPointsModal(true);
                                 }}
-                                className="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors text-sm font-medium"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-500 text-white transition-colors hover:bg-primary-600"
+                                aria-label="Adjust points"
+                                title="Adjust points"
                               >
-                                Adjust Points
+                                <span className="material-symbols-outlined">tune</span>
                               </button>
                               {user.status === 'ACTIVE_MEMBER' && (
                                 <button
                                   onClick={() => handleDeactivateSubscription(user.id, user.email)}
-                                  className="bg-error-500 text-white px-4 py-2 rounded-lg hover:bg-error-600 transition-colors text-sm font-medium"
+                                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-error-500 text-white transition-colors hover:bg-error-600"
+                                  aria-label="Deactivate member"
+                                  title="Deactivate member"
                                 >
-                                  Deactivate
+                                  <span className="material-symbols-outlined">person_off</span>
                                 </button>
                               )}
                             </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-neutral-700 dark:text-neutral-300">
+                            {new Date(user.created_at).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
                           </td>
                         </tr>
                       ))}
@@ -517,7 +655,72 @@ export default function AdminPage() {
       </main>
 
       {/* Event Modal */}
-      {showEventModal && <EventModal event={editingEvent} onClose={() => { setShowEventModal(false); setEditingEvent(null); }} onCreate={handleCreateEvent} onUpdate={handleUpdateEvent} />}
+      {showEventModal && <EventModal event={editingEvent} token={token} onClose={() => { setShowEventModal(false); setEditingEvent(null); }} onCreate={handleCreateEvent} onUpdate={handleUpdateEvent} />}
+
+      {showRegistrationsModal && registrationsEvent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-primary-700 dark:text-primary-400">
+                  Event Members
+                </h3>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {registrationsEvent.title}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRegistrationsModal(false);
+                  setRegistrationsEvent(null);
+                  setRegistrations([]);
+                }}
+                className="rounded-full border border-neutral-200 p-2 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                aria-label="Close members"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {registrationsLoading ? (
+              <div className="text-neutral-600 dark:text-neutral-400">Loading members...</div>
+            ) : registrations.length === 0 ? (
+              <div className="text-neutral-600 dark:text-neutral-400">No members registered yet.</div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Name</th>
+                      <th className="px-4 py-3 font-semibold">Email</th>
+                      <th className="px-4 py-3 font-semibold">Registered Date</th>
+                      <th className="px-4 py-3 font-semibold">Reservation ID</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                    {registrations.map((registration) => (
+                      <tr key={registration._id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
+                        <td className="px-4 py-3 text-neutral-900 dark:text-neutral-100">
+                          {registration.user_id?.full_name || registration.user_id?.email || 'Unknown'}
+                        </td>
+                        <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                          {registration.user_id?.email || 'No email'}
+                        </td>
+                        <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">
+                          {new Date(registration.registered_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-primary-600 dark:text-primary-400 font-semibold">
+                          {registration.reservation_code || 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Points Modal */}
       {showPointsModal && selectedUser && <PointsModal user={selectedUser} onClose={() => { setShowPointsModal(false); setSelectedUser(null); }} onSave={handleAdjustPoints} />}
@@ -526,12 +729,15 @@ export default function AdminPage() {
 }
 
 // Event Modal Component
-function EventModal({ event, onClose, onCreate, onUpdate }: { 
-  event: Event | null; 
+function EventModal({ event, token, onClose, onCreate, onUpdate }: { 
+  event: Event | null;
+  token: string | null;
   onClose: () => void; 
-  onCreate?: (data: any) => void;
-  onUpdate?: (eventId: string, data: any) => void;
+  onCreate?: (data: EventFormData) => void;
+  onUpdate?: (eventId: string, data: EventFormData) => void;
 }) {
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: event?.title || '',
     description: event?.description || '',
@@ -542,6 +748,50 @@ function EventModal({ event, onClose, onCreate, onUpdate }: {
     image_url: event?.image_url || '',
     status: event?.status || 'UPCOMING'
   });
+
+  const handleUploadImage = async () => {
+    if (!token) {
+      alert('Authentication required');
+      return;
+    }
+
+    if (!uploadFile) {
+      alert('Please choose an image first');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', uploadFile);
+      if (formData.image_url) {
+        fd.append('oldUrl', formData.image_url);
+      }
+
+      const response = await fetch('/api/admin/events/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: fd
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Upload failed');
+        return;
+      }
+
+      setFormData({ ...formData, image_url: data.url });
+      setUploadFile(null);
+      alert('Image uploaded');
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -588,8 +838,24 @@ function EventModal({ event, onClose, onCreate, onUpdate }: {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Image URL</label>
-            <input type="url" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100" />
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Image URL <span className="text-xs text-neutral-500">(optional)</span></label>
+            <div className="space-y-2">
+              <input type="text" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100" placeholder="Enter image URL or upload below" />
+              <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-3 space-y-2 border border-neutral-200 dark:border-neutral-700">
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Or upload an image:</p>
+                <div className="flex gap-2">
+                  <input type="file" accept="image/*" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm" />
+                  <button type="button" onClick={handleUploadImage} disabled={isUploading} className="px-3 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
+                    {isUploading ? 'Uploading...' : 'Upload'}
+                  </button>
+                </div>
+                <div className="text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-900 rounded p-2 space-y-1">
+                  <p className="font-medium">📐 Recommended: 800×600px or 1200×900px (landscape or square)</p>
+                  <p>💾 Max file size: 10MB • Formats: JPG, PNG, WEBP, GIF</p>
+                  <p>💡 Tip: Smaller files load faster. Aim for &lt;1MB</p>
+                </div>
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Status</label>
