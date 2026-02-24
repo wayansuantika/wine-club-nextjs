@@ -8,12 +8,12 @@ export interface AuthBannersConfig {
 }
 
 const DEFAULT_AUTH_BANNERS: AuthBannersConfig = {
-  loginMobile: '/images/login-banner-mobile.jpg',
-  loginDesktop: '/images/login-banner-desktop.jpg',
-  loginFallback: '/images/login-banner.jpg',
-  registerMobile: '/images/register-banner-mobile.jpg',
-  registerDesktop: '/images/register-banner-desktop.jpg',
-  registerFallback: '/images/register-banner.jpg'
+  loginMobile: '/images/auth-banners/loginMobile-1771574449506.jpeg',
+  loginDesktop: '/images/auth-banners/loginDesktop-1771574458958.jpeg',
+  loginFallback: '/images/auth-banners/loginDesktop-1771574458958.jpeg', // Use desktop as fallback
+  registerMobile: '/images/auth-banners/registerMobile-1771574468483.jpeg',
+  registerDesktop: '/images/auth-banners/registerDesktop-1771574478983.jpeg',
+  registerFallback: '/images/auth-banners/registerDesktop-1771574478983.jpeg' // Use desktop as fallback
 };
 
 export function getDefaultAuthBanners(): AuthBannersConfig {
