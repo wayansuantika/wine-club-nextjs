@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       console.log('[Register] User already exists:', email);
       return NextResponse.json(
-        { error: 'Email already registered' },
+        { error: 'This email is already registered. Please login or use a different email.' },
         { status: 409 }
       );
     }

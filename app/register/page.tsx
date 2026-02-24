@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [shakeForm, setShakeForm] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [mobileBannerSrc, setMobileBannerSrc] = useState(defaultBanners.registerMobile);
@@ -90,6 +91,8 @@ export default function RegisterPage() {
     // Validation
     if (!email || !password || !confirmPassword) {
       toast.error('Please fill in all required fields');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
@@ -97,32 +100,44 @@ export default function RegisterPage() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast.error('Please enter a valid email address');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
     // Password validation
     if (password.length < 8) {
       toast.error('Password must be at least 8 characters long');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
     if (!/[A-Z]/.test(password)) {
       toast.error('Password must contain at least one uppercase letter');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
     if (!/[a-z]/.test(password)) {
       toast.error('Password must contain at least one lowercase letter');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
     if (!/[0-9]/.test(password)) {
       toast.error('Password must contain at least one number');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
@@ -147,7 +162,23 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.error || 'Registration failed');
+        // Show specific error messages
+        if (response.status === 409) {
+          toast.error('This email is already registered. Please use a different email or login.', {
+            duration: 5000,
+            icon: '📧',
+          });
+        } else if (response.status === 400) {
+          toast.error(data.error || 'Please check your input', {
+            duration: 4000,
+          });
+        } else {
+          toast.error(data.error || 'Registration failed. Please try again.', {
+            duration: 4000,
+          });
+        }
+        setShakeForm(true);
+        setTimeout(() => setShakeForm(false), 500);
         return;
       }
 
@@ -274,7 +305,7 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5" suppressHydrationWarning>
+            <form onSubmit={handleSubmit} className={`space-y-4 sm:space-y-5 ${shakeForm ? 'animate-shake' : ''}`} suppressHydrationWarning>
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   Full Name (Optional)

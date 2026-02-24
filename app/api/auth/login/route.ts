@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       console.log('[Login] User not found:', email);
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid email or password. Please check your credentials.' },
         { status: 401 }
       );
     }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (!isPasswordValid) {
       console.log('[Login] Password verification failed');
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid email or password. Please check your credentials.' },
         { status: 401 }
       );
     }

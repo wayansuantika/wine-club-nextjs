@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [shakeForm, setShakeForm] = useState(false);
   const [mobileBannerSrc, setMobileBannerSrc] = useState(defaultBanners.loginMobile);
   const [desktopBannerSrc, setDesktopBannerSrc] = useState(defaultBanners.loginDesktop);
   const [fallbackBannerSrc, setFallbackBannerSrc] = useState(defaultBanners.loginFallback);
@@ -61,6 +62,8 @@ export default function LoginPage() {
     
     if (!email || !password) {
       toast.error('Please fill in all fields');
+      setShakeForm(true);
+      setTimeout(() => setShakeForm(false), 500);
       return;
     }
 
@@ -85,7 +88,23 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.error || 'Login failed');
+        // Show specific error messages
+        if (response.status === 401) {
+          toast.error(data.error || 'Invalid email or password', {
+            duration: 4000,
+            icon: '🔒',
+          });
+        } else if (response.status === 400) {
+          toast.error(data.error || 'Please fill in all fields', {
+            duration: 3000,
+          });
+        } else {
+          toast.error(data.error || 'Login failed. Please try again.', {
+            duration: 4000,
+          });
+        }
+        setShakeForm(true);
+        setTimeout(() => setShakeForm(false), 500);
         return;
       }
 
@@ -159,7 +178,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" suppressHydrationWarning>
+            <form onSubmit={handleSubmit} className={`space-y-4 sm:space-y-6 ${shakeForm ? 'animate-shake' : ''}`} suppressHydrationWarning>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
                   Email Address
