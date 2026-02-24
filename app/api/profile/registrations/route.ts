@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const registrations = await EventDB.getUserRegistrations(authUser.id);
 
     // Format response
-    const formattedRegistrations = registrations.map((reg: any) => ({
+    const formattedRegistrations = registrations.map((reg) => ({
       registration_id: reg._id,
       reservation_code: reg.reservation_code,
       points_spent: reg.points_spent,

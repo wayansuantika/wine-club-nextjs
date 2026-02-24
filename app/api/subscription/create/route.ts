@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
           console.log(`  - Action: ${action.action}, URL: ${action.url}`);
         }
         
-        const authAction = xenditData.actions.find((action: any) => 
+        const authAction = xenditData.actions.find((action: { action?: string; url?: string }) => 
           action.action === 'AUTH' || action.action === 'TOKENIZE' || action.action === 'VERIFY'
         );
         
@@ -336,11 +336,14 @@ export async function POST(request: NextRequest) {
         payment_url: paymentUrl
       }, { status: 201 });
 
-    } catch (xenditError: any) {
+    } catch (xenditError: unknown) {
+      const xenditMessage = xenditError instanceof Error ? xenditError.message : 'Unknown error';
+      const xenditName = xenditError instanceof Error ? xenditError.name : 'UnknownError';
+      const xenditStack = xenditError instanceof Error ? xenditError.stack : undefined;
       console.error('❌ XENDIT INTEGRATION ERROR');
-      console.error('Error message:', xenditError.message);
-      console.error('Error type:', xenditError.name);
-      console.error('Stack trace:', xenditError.stack);
+      console.error('Error message:', xenditMessage);
+      console.error('Error type:', xenditName);
+      console.error('Stack trace:', xenditStack);
       
       // Log the auth header format (without actual key)
       if (XENDIT_SECRET_KEY) {

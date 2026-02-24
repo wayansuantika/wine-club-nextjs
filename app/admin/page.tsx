@@ -47,12 +47,25 @@ interface User {
 
 interface Payment {
   _id: string;
-  user_id: any;
+  user_id?: {
+    email?: string;
+  } | null;
   amount: number;
   status: string;
   payment_method: string;
   created_at: string;
   paid_at?: string;
+}
+
+interface EventFormData {
+  title: string;
+  description: string;
+  location: string;
+  event_date: string;
+  points_cost: number;
+  max_attendees: number;
+  image_url: string;
+  status: string;
 }
 
 interface Webhook {
@@ -103,6 +116,7 @@ export default function AdminPage() {
     }
 
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user, activeTab, router, authChecked]);
 
   const loadData = async () => {
@@ -167,7 +181,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleCreateEvent = async (eventData: any) => {
+  const handleCreateEvent = async (eventData: EventFormData) => {
     try {
       const response = await apiCall('/api/admin/events', {
         method: 'POST',
@@ -189,7 +203,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleUpdateEvent = async (eventId: string, eventData: any) => {
+  const handleUpdateEvent = async (eventId: string, eventData: EventFormData) => {
     try {
       const response = await apiCall(`/api/admin/events/${eventId}`, {
         method: 'PUT',
@@ -719,8 +733,8 @@ function EventModal({ event, token, onClose, onCreate, onUpdate }: {
   event: Event | null;
   token: string | null;
   onClose: () => void; 
-  onCreate?: (data: any) => void;
-  onUpdate?: (eventId: string, data: any) => void;
+  onCreate?: (data: EventFormData) => void;
+  onUpdate?: (eventId: string, data: EventFormData) => void;
 }) {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);

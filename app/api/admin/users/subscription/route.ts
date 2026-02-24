@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth, verifyAdmin } from '@/lib/auth';
 import { SubscriptionDB, UserDB, AdminDB } from '@/lib/db/mongodb';
 
-const XENDIT_SECRET_KEY = process.env.XENDIT_SECRET_KEY!;
-
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication and admin access

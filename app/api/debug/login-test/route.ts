@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { UserDB } from '@/lib/db/mongodb';
 import { verifyPassword } from '@/lib/auth';
 import mongoose from 'mongoose';
 
-export async function GET(request: NextRequest) {
-  const diagnostics: any = {
+export async function GET() {
+  const diagnostics: { timestamp: string; steps: Array<Record<string, unknown>> } = {
     timestamp: new Date().toISOString(),
     steps: []
   };
@@ -81,12 +81,13 @@ export async function GET(request: NextRequest) {
           });
         }
 
-      } catch (pwError: any) {
+      } catch (pwError: unknown) {
+        const pwMessage = pwError instanceof Error ? pwError.message : 'Unknown error';
         diagnostics.steps.push({
           step: 4,
           name: 'Password Verification',
           status: 'error',
-          error: pwError.message
+          error: pwMessage
         });
 
         return NextResponse.json({
@@ -110,14 +111,19 @@ export async function GET(request: NextRequest) {
         diagnostics
       });
 
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
+      const dbMessage = dbError instanceof Error ? dbError.message : 'Unknown error';
+      const dbName = dbError instanceof Error ? dbError.name : 'UnknownError';
+      const dbCode = typeof dbError === 'object' && dbError !== null && 'code' in dbError
+        ? (dbError as { code?: unknown }).code
+        : undefined;
       diagnostics.steps.push({
         step: 2,
         name: 'MongoDB Connection',
         status: 'error',
-        error: dbError.message,
-        error_code: dbError.code,
-        error_name: dbError.name
+        error: dbMessage,
+        error_code: dbCode,
+        error_name: dbName
       });
 
       return NextResponse.json({
@@ -128,11 +134,12 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({
       success: false,
       issue: 'Unexpected error',
-      error: error.message,
+      error: message,
       diagnostics
     }, { status: 500 });
   }

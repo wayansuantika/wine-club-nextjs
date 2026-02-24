@@ -33,18 +33,18 @@ export async function GET(request: NextRequest) {
     const collectionNames = collections.map(c => c.name);
     
     // Count documents in each collection
-    const collectionStats: any = {};
+    const collectionStats: Record<string, number | string> = {};
     for (const name of collectionNames) {
       try {
         const count = await db.collection(name).countDocuments();
         collectionStats[name] = count;
-      } catch (error) {
+      } catch {
         collectionStats[name] = 'Error counting';
       }
     }
 
     // Check for Events (capital E) vs events (lowercase)
-    let eventsData: any = null;
+    let eventsData: { collection: string; count: number; samples: unknown[] } | null = null;
     if (collectionNames.includes('Events')) {
       const count = await db.collection('Events').countDocuments();
       const samples = await db.collection('Events').find().limit(3).toArray();
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check EventRegistrations
-    let registrationsData: any = null;
+    let registrationsData: { collection: string; count: number; samples: unknown[] } | null = null;
     const registrationCollections = collectionNames.filter(n => 
       n.toLowerCase().includes('registration')
     );
@@ -77,11 +77,12 @@ export async function GET(request: NextRequest) {
       registrations_analysis: registrationsData,
       note: 'Mongoose converts model names to lowercase plural. Event -> events, EventRegistration -> eventregistrations'
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Diagnostics] Error:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: message
     }, { status: 500 });
   }
 }

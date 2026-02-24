@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { apiCall } from '@/lib/api';
@@ -52,7 +52,7 @@ export default function ProfilePage() {
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([getSubscriptionPlan()]);
   const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null);
   const router = useRouter();
-  const { user, token, loadAuth, clearAuth } = useAuthStore();
+  const { token, loadAuth, clearAuth } = useAuthStore();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,18 +85,20 @@ export default function ProfilePage() {
     fetchSubscriptionPlans();
   }, []);
 
-  useEffect(() => {
-    if (!authChecked) return;
+  const fetchRegistrations = useCallback(async () => {
+    try {
+      const response = await apiCall('/api/profile/registrations');
+      const data = await response.json();
 
-    if (!token) {
-      router.push('/login');
-      return;
+      if (response.ok) {
+        setRegistrations(data.registrations);
+      }
+    } catch (error) {
+      console.error('Registrations fetch error:', error);
     }
+  }, []);
 
-    fetchProfile();
-  }, [token, router, authChecked]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const response = await apiCall('/api/profile');
       const data = await response.json();
@@ -122,20 +124,18 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [clearAuth, fetchRegistrations, router]);
 
-  const fetchRegistrations = async () => {
-    try {
-      const response = await apiCall('/api/profile/registrations');
-      const data = await response.json();
+  useEffect(() => {
+    if (!authChecked) return;
 
-      if (response.ok) {
-        setRegistrations(data.registrations);
-      }
-    } catch (error) {
-      console.error('Registrations fetch error:', error);
+    if (!token) {
+      router.push('/login');
+      return;
     }
-  };
+
+    fetchProfile();
+  }, [token, router, authChecked, fetchProfile]);
 
   const handleSubscribe = async () => {
     if (!selectedPlanCode) {
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                   Choose Plan
                 </h3>
                 <p className="text-neutral-600 dark:text-neutral-400 text-center mb-6 text-sm">
-                  Select which subscription plan you'd like to subscribe to
+                  Select which subscription plan you&apos;d like to subscribe to
                 </p>
 
                 {/* Plans Grid */}

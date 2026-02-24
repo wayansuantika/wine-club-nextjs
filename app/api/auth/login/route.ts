@@ -64,17 +64,20 @@ export async function POST(request: NextRequest) {
         profile_photo: user.profile_photo
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorName = error instanceof Error ? error.name : 'UnknownError';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('[Login] Error occurred:', error);
-    console.error('[Login] Error stack:', error.stack);
-    console.error('[Login] Error name:', error.name);
-    console.error('[Login] Error message:', error.message);
+    console.error('[Login] Error stack:', errorStack);
+    console.error('[Login] Error name:', errorName);
+    console.error('[Login] Error message:', errorMessage);
     
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        details: error.message,
-        name: error.name
+        details: errorMessage,
+        name: errorName
       },
       { status: 500 }
     );

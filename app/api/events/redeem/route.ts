@@ -80,15 +80,16 @@ export async function POST(request: NextRequest) {
         },
         new_balance: newBalance
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       // Handle specific errors
-      if (error.message === 'Already registered for this event') {
+      if (message === 'Already registered for this event') {
         return NextResponse.json(
           { error: 'You are already registered for this event' },
           { status: 409 }
         );
       }
-      if (error.message === 'Event is full') {
+      if (message === 'Event is full') {
         return NextResponse.json(
           { error: 'Event is at full capacity' },
           { status: 409 }

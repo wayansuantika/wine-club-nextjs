@@ -79,7 +79,7 @@ export interface AdminLog {
 export interface Webhook {
   _id: string;
   event_type: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status: 'PENDING' | 'PROCESSED' | 'FAILED';
   received_at: Date;
   processed_at?: Date;

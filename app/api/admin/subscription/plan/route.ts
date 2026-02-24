@@ -50,11 +50,12 @@ export async function PUT(request: NextRequest) {
       message: 'Subscription plan updated successfully',
       plan
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin subscription plan update error:', error);
+    const message = error instanceof Error ? error.message : undefined;
 
-    if (error?.message) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (message) {
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

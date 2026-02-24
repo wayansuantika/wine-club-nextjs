@@ -65,11 +65,12 @@ export async function PUT(request: NextRequest, route: RouteParams) {
       message: 'Subscription plan updated successfully',
       plan
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin subscription plan update error:', error);
+    const message = error instanceof Error ? error.message : undefined;
 
-    if (error?.message) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (message) {
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -94,18 +95,19 @@ export async function DELETE(request: NextRequest, route: RouteParams) {
     await AdminDB.logAction(authResult.user.id, 'DELETE_SUBSCRIPTION_PLAN', 'AppConfig', code, {});
 
     return NextResponse.json({ message: 'Subscription plan deleted successfully' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin subscription plan delete error:', error);
+    const message = error instanceof Error ? error.message : undefined;
 
-    if (error?.message) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (message) {
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest, route: RouteParams) {
+export async function POST(request: NextRequest) {
   try {
     const authResult = verifyAuth(request);
     if ('error' in authResult) {
@@ -129,11 +131,12 @@ export async function POST(request: NextRequest, route: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin subscription plan create error:', error);
+    const message = error instanceof Error ? error.message : undefined;
 
-    if (error?.message) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (message) {
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

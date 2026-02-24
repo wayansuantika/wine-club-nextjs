@@ -72,17 +72,20 @@ export async function POST(request: NextRequest) {
         full_name: full_name || null
       }
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorName = error instanceof Error ? error.name : 'UnknownError';
+    const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('[Register] Error occurred:', error);
-    console.error('[Register] Error stack:', error.stack);
-    console.error('[Register] Error name:', error.name);
-    console.error('[Register] Error message:', error.message);
+    console.error('[Register] Error stack:', errorStack);
+    console.error('[Register] Error name:', errorName);
+    console.error('[Register] Error message:', errorMessage);
     
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        details: error.message,
-        name: error.name
+        details: errorMessage,
+        name: errorName
       },
       { status: 500 }
     );

@@ -126,9 +126,10 @@ export async function POST(request: NextRequest) {
       await WebhookDB.markProcessed(webhookLog._id.toString());
 
       return NextResponse.json({ success: true });
-    } catch (processingError: any) {
+    } catch (processingError: unknown) {
+      const message = processingError instanceof Error ? processingError.message : 'Unknown processing error';
       console.error('Webhook processing error:', processingError);
-      await WebhookDB.markProcessed(webhookLog._id.toString(), processingError.message);
+      await WebhookDB.markProcessed(webhookLog._id.toString(), message);
       throw processingError;
     }
   } catch (error) {

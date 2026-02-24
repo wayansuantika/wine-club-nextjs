@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { apiCall } from '@/lib/api';
@@ -61,9 +61,36 @@ export default function EventsPage() {
     fetchProfile();
   }, [token, user, router, authChecked]);
 
+  const filterEvents = useCallback(() => {
+    let result = events;
+
+    // Filter by status
+    if (filterStatus === 'AVAILABLE') {
+      result = result.filter(e => !isPastEvent(e) && !e.isRegistered && e.current_attendees < e.max_attendees);
+    } else if (filterStatus === 'REGISTERED') {
+      result = result
+        .filter(e => e.isRegistered)
+        .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+    } else if (filterStatus === 'PAST') {
+      result = result.filter(e => isPastEvent(e));
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(e => 
+        e.title.toLowerCase().includes(query) || 
+        e.location.toLowerCase().includes(query) ||
+        e.description?.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredEvents(result);
+  }, [events, filterStatus, searchQuery]);
+
   useEffect(() => {
     filterEvents();
-  }, [events, filterStatus, searchQuery]);
+  }, [filterEvents]);
 
   const fetchEvents = async () => {
     try {
@@ -94,33 +121,6 @@ export default function EventsPage() {
     } catch (error) {
       console.error('Profile fetch error:', error);
     }
-  };
-
-  const filterEvents = () => {
-    let result = events;
-
-    // Filter by status
-    if (filterStatus === 'AVAILABLE') {
-      result = result.filter(e => !isPastEvent(e) && !e.isRegistered && e.current_attendees < e.max_attendees);
-    } else if (filterStatus === 'REGISTERED') {
-      result = result
-        .filter(e => e.isRegistered)
-        .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
-    } else if (filterStatus === 'PAST') {
-      result = result.filter(e => isPastEvent(e));
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(e => 
-        e.title.toLowerCase().includes(query) || 
-        e.location.toLowerCase().includes(query) ||
-        e.description?.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredEvents(result);
   };
 
   const isPastEvent = (event: Event) => {
@@ -271,6 +271,7 @@ export default function EventsPage() {
                 {/* Image */}
                 <div className="relative w-full h-40 bg-gradient-to-br from-primary-700 to-accent-600">
                   {event.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={event.image_url}
                       alt={event.title}

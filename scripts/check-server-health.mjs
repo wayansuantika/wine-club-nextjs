@@ -64,9 +64,6 @@ console.log();
 console.log('✓ Check 3: Required Dependencies');
 const packageJsonPath = path.resolve(process.cwd(), 'package.json');
 if (fs.existsSync(packageJsonPath)) {
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-  
   const requiredDeps = ['mongoose', 'bcryptjs', 'jsonwebtoken', 'next', 'react'];
   
   for (const dep of requiredDeps) {

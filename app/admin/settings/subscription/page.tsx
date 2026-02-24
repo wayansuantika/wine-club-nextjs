@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { apiCall } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
-import { formatIdr, formatIdrCompactMillions, formatPointsCompact } from '@/lib/subscriptionPlan';
+import { formatIdrCompactMillions, formatPointsCompact } from '@/lib/subscriptionPlan';
 
 interface SubscriptionPlan {
   code: string;

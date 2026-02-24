@@ -90,10 +90,11 @@ export async function POST(request: NextRequest) {
       fixes,
       plans: fixedPlans
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Migration error:', error);
+    const message = error instanceof Error ? error.message : 'Migration failed';
     return NextResponse.json(
-      { error: error?.message || 'Migration failed' },
+      { error: message },
       { status: 500 }
     );
   }

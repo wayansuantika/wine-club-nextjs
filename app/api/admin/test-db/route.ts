@@ -64,12 +64,14 @@ export async function GET(request: NextRequest) {
       },
       samples: sampleData
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const stack = error instanceof Error ? error.stack : undefined;
     console.error('[Test] Error:', error);
     return NextResponse.json({
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: message,
+      stack
     }, { status: 500 });
   }
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth, verifyAdmin } from '@/lib/auth';
-import { AdminDB } from '@/lib/db/mongodb';
 import { getAllSubscriptionPlans } from '@/lib/server/subscriptionPlansStore';
 
 export async function GET(request: NextRequest) {
