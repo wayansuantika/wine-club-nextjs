@@ -73,6 +73,15 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password })
       });
 
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        toast.error('Server error: ' + text.substring(0, 100));
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
