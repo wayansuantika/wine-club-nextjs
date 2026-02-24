@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { apiCall } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -271,11 +272,13 @@ export default function EventsPage() {
                 {/* Image */}
                 <div className="relative w-full h-40 bg-gradient-to-br from-primary-700 to-accent-600">
                   {event.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={event.image_url}
                       alt={event.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      unoptimized
+                      className="object-cover"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                       }}
