@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## feat: expand admin settings, subscription plan APIs, and auth banner management
 
-## Getting Started
+### Summary
+This PR advances the Next.js migration by adding admin settings capabilities, subscription plan management endpoints, registration/profile API improvements, and UI/auth banner plumbing.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### What changed
+- **Admin settings pages** for:
+  - Auth banners
+  - Subscription settings
+  - Subscription plans
+- **Admin APIs**:
+  - Diagnostics and DB testing
+  - Event image upload and event registrations
+  - Subscription plan CRUD and migration routes
+  - Admin UI auth-banner config and upload
+- **User-facing/support APIs**:
+  - Subscription plan retrieval
+  - Profile registrations
+  - Subscription create/webhook adjustments
+  - Public UI auth-banner route
+- **Core app pages and styling**:
+  - Admin, events, login, profile, register, layout, global styles
+- **Server/domain utilities**:
+  - Auth banners helpers/store
+  - Subscription plan helpers/store
+  - DB models/connection updates
+  - Shared types updates
+- **Scripts and seeded assets**:
+  - Seed/test scripts
+  - Auth banner and event images
+  - Reservation system documentation
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Why
+- Complete key migration gaps from the legacy app  
+- Enable admin self-service for subscription and banner configuration  
+- Support richer event/subscription flows needed by profile/events/admin surfaces  
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+### Validation
+- Branch builds on existing migration structure  
+- API/page wiring is in place for admin + member flows  
+- Ready for reviewer testing in dev environment (`npm run dev`)  
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Notes
+- Includes both code and static asset additions  
+- Focused on migration completeness and operational admin tooling  
