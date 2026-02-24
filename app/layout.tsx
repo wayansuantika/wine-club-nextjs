@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-page-custom-font */
 import type { Metadata } from "next";
+import "@fontsource/material-symbols-outlined";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,12 +14,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..700,0,0&display=optional"
-        />
-      </head>
       <body suppressHydrationWarning>
         {children}
       </body>
