@@ -8,7 +8,6 @@ import { useAuthStore } from '@/lib/store/authStore';
 
 interface Event {
   _id: string;
-  id: string;
   title: string;
   description?: string;
   location: string;
@@ -21,19 +20,23 @@ interface Event {
   isRegistered?: boolean;
 }
 
+type FilterStatus = 'AVAILABLE' | 'REGISTERED' | 'PAST';
+
 export default function EventsPage() {
   const router = useRouter();
   const { user, token, loadAuth } = useAuthStore();
   const [events, setEvents] = useState<Event[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [balance, setBalance] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  // Minimum swipe distance (in px)
-  const minSwipeDistance = 50;
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('AVAILABLE');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [pendingEvent, setPendingEvent] = useState<Event | null>(null);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     loadAuth();
@@ -57,6 +60,10 @@ export default function EventsPage() {
     fetchEvents();
     fetchProfile();
   }, [token, user, router, authChecked]);
+
+  useEffect(() => {
+    filterEvents();
+  }, [events, filterStatus, searchQuery]);
 
   const fetchEvents = async () => {
     try {
@@ -87,6 +94,37 @@ export default function EventsPage() {
     } catch (error) {
       console.error('Profile fetch error:', error);
     }
+  };
+
+  const filterEvents = () => {
+    let result = events;
+
+    // Filter by status
+    if (filterStatus === 'AVAILABLE') {
+      result = result.filter(e => !isPastEvent(e) && !e.isRegistered && e.current_attendees < e.max_attendees);
+    } else if (filterStatus === 'REGISTERED') {
+      result = result
+        .filter(e => e.isRegistered)
+        .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+    } else if (filterStatus === 'PAST') {
+      result = result.filter(e => isPastEvent(e));
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(e => 
+        e.title.toLowerCase().includes(query) || 
+        e.location.toLowerCase().includes(query) ||
+        e.description?.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredEvents(result);
+  };
+
+  const isPastEvent = (event: Event) => {
+    return new Date(event.event_date).getTime() < Date.now();
   };
 
   const handleRedeem = async (event: Event) => {
@@ -121,7 +159,6 @@ export default function EventsPage() {
       toast.success('Successfully registered for event!');
       setBalance(data.new_balance);
       
-      // Mark event as registered
       setEvents(prev => prev.map(e => 
         e._id === event._id ? { ...e, isRegistered: true, current_attendees: e.current_attendees + 1 } : e
       ));
@@ -131,58 +168,18 @@ export default function EventsPage() {
     }
   };
 
-  const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : events.length - 1));
+  const handleOpenJoinModal = (event: Event) => {
+    setPendingEvent(event);
+    setShowJoinModal(true);
   };
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev < events.length - 1 ? prev + 1 : 0));
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') handlePrevious();
-      if (e.key === 'ArrowRight') handleNext();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [events.length]);
-
-  // Touch event handlers for swipe
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distanceX = touchStart - touchEnd;
-    const isLeftSwipe = distanceX > minSwipeDistance;
-    const isRightSwipe = distanceX < -minSwipeDistance;
-
-    if (isLeftSwipe) {
-      handleNext();
-    } else if (isRightSwipe) {
-      handlePrevious();
-    }
-  };
-
-  const getCardStyle = (index: number) => {
-    const diff = index - currentIndex;
-    if (diff === 0) {
-      return 'scale-100 opacity-100 z-20';
-    } else if (diff === -1 || (currentIndex === 0 && index === events.length - 1)) {
-      return 'scale-85 opacity-50 blur-sm z-10 -translate-x-4';
-    } else if (diff === 1 || (currentIndex === events.length - 1 && index === 0)) {
-      return 'scale-85 opacity-50 blur-sm z-10 translate-x-4';
-    }
-    return 'scale-75 opacity-0 pointer-events-none';
+  const handleConfirmJoin = async () => {
+    if (!pendingEvent) return;
+    setIsJoining(true);
+    await handleRedeem(pendingEvent);
+    setIsJoining(false);
+    setShowJoinModal(false);
+    setPendingEvent(null);
   };
 
   if (isLoading) {
@@ -202,7 +199,7 @@ export default function EventsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700">
       {/* Header */}
       <header className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -222,162 +219,276 @@ export default function EventsPage() {
         </div>
       </header>
 
-      {/* Carousel */}
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-12">
-        <div 
-          className="relative flex items-center justify-center min-h-[500px] sm:min-h-[700px] touch-pan-y overflow-hidden"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          {/* Cards */}
-          <div className="relative w-full max-w-4xl h-[500px] sm:h-[640px]">
-            {events.map((event, index) => {
-              const isActive = index === currentIndex;
-              return (
-                <div
-                  key={event._id}
-                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${getCardStyle(index)}`}
+      {/* Events Section */}
+      <section className="container mx-auto px-4 sm:px-6 py-6 sm:py-12">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-bold text-white mb-4">Events</h2>
+          
+          {/* Filters */}
+          <div className="space-y-4 sm:space-y-0 sm:flex sm:gap-3 flex-wrap">
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 min-w-[200px] px-4 py-2 rounded-lg border border-white/20 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+
+            <div className="flex gap-2 overflow-x-auto sm:overflow-x-visible">
+              {(['AVAILABLE', 'REGISTERED', 'PAST'] as FilterStatus[]).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                    filterStatus === status
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
                 >
-                  <div className={`bg-white dark:bg-neutral-900 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden ${isActive ? 'h-[500px] sm:h-[640px]' : 'h-[420px] sm:h-[520px]'}`}>
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-                    <div className={`relative w-full ${isActive ? 'h-48 sm:h-64' : 'h-40 sm:h-48'}`}>
-                      {event.image_url ? (
-                        <div className="w-full h-full">
-                          <img
-                            src={event.image_url}
-                            alt={event.title}
-                            className="block sm:hidden w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                          <img
-                            src={event.image_url}
-                            alt={event.title}
-                            className="hidden sm:block w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center p-4 sm:p-8">
-                          <h2 className="text-white text-xl sm:text-3xl font-bold text-center leading-tight">
-                            {event.title}
-                          </h2>
-                        </div>
-                      )}
-                    
-                    {/* Overlay with Cost and Button */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-3 sm:p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <span className="text-xs text-white/80 block">Cost:</span>
-                          <span className="text-lg sm:text-2xl font-bold text-white">
-                            {event.points_cost.toLocaleString()} pts
-                          </span>
-                        </div>
-
-                        {isActive && (
-                          <button
-                            onClick={() => handleRedeem(event)}
-                            disabled={event.isRegistered || event.current_attendees >= event.max_attendees}
-                            className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition-all text-sm sm:text-base ${
-                              event.isRegistered
-                                ? 'bg-neutral-300 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 cursor-not-allowed'
-                                : event.current_attendees >= event.max_attendees
-                                ? 'bg-error-200 text-error-700 cursor-not-allowed'
-                                : 'gradient-primary text-white hover:opacity-90'
-                            }`}
-                          >
-                            {event.isRegistered ? 'Registered' : event.current_attendees >= event.max_attendees ? 'Full' : 'Redeem'}
-                          </button>
-                        )}
-                      </div>
+        {filteredEvents.length === 0 ? (
+          <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
+            <p className="text-white text-lg">No events match your filters</p>
+            <p className="text-white/60 text-sm mt-2">Try adjusting your search or filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {filteredEvents.map((event) => (
+              <div
+                key={event._id}
+                className={`rounded-xl overflow-hidden shadow-lg transition-shadow flex flex-col h-full ${
+                  isPastEvent(event)
+                    ? 'bg-neutral-100 dark:bg-neutral-900/70 opacity-80 grayscale'
+                    : 'bg-white dark:bg-neutral-900 hover:shadow-xl'
+                }`}
+              >
+                {/* Image */}
+                <div className="relative w-full h-40 bg-gradient-to-br from-primary-700 to-accent-600">
+                  {event.image_url && (
+                    <img
+                      src={event.image_url}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  {isPastEvent(event) && (
+                    <div className="absolute left-3 top-3 rounded-full bg-neutral-900/80 px-3 py-1 text-xs font-semibold text-white">
+                      Past Event
                     </div>
-                    </div>
+                  )}
+                </div>
 
-                    <div className={`p-4 sm:p-6 overflow-y-auto ${isActive ? 'max-h-[252px] sm:max-h-[376px]' : 'max-h-[220px] sm:max-h-[272px]'}`}>
-                    {event.image_url && (
-                      <h2 className="text-xl sm:text-2xl font-bold text-primary-700 dark:text-primary-400 mb-3">
-                        {event.title}
-                      </h2>
+                {/* Content */}
+                <div className="p-4 sm:p-5 flex flex-col flex-1">
+                  <h3 className="font-bold text-neutral-900 dark:text-neutral-100 mb-1 line-clamp-2">
+                    {event.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mb-3 inline-flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">location_on</span>
+                    <span>{event.location}</span>
+                  </p>
+
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <p className="text-xs text-neutral-700 dark:text-neutral-300 flex-1 line-clamp-2">
+                      {event.description}
+                    </p>
+                    {event.description && event.description.length > 120 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedEvent(event);
+                          setShowEventModal(true);
+                        }}
+                        className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                        aria-label="View event details"
+                      >
+                        <span className="material-symbols-outlined text-base">info</span>
+                      </button>
                     )}
-                    
-                    <div className="space-y-2 text-sm sm:text-base text-neutral-600 dark:text-neutral-400 mb-4">
-                      <p className="flex items-center gap-2">
-                        <span className="font-semibold">📍</span>
-                        <span className="truncate">{event.location}</span>
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <span className="font-semibold">📅</span>
-                        <span className="text-xs sm:text-sm">
-                          {new Date(event.event_date).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </p>
-                      <p className="flex items-center gap-2">
-                        <span className="font-semibold">👥</span>
-                        {event.current_attendees} / {event.max_attendees} attendees
-                      </p>
-                    </div>
+                  </div>
 
-                    {event.description && (
-                      <p className="text-sm sm:text-base text-neutral-700 dark:text-neutral-300 line-clamp-3 sm:line-clamp-none">
-                        {event.description}
-                      </p>
-                      )}
+                  {/* Quick Info */}
+                  <div className="space-y-2 py-3 border-y border-neutral-200 dark:border-neutral-700 mb-3">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-neutral-600 dark:text-neutral-400">Date:</span>
+                      <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                        {new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-neutral-600 dark:text-neutral-400">Cost:</span>
+                      <span className="font-semibold text-primary-600 dark:text-primary-400">
+                        {event.points_cost.toLocaleString()}pts
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-neutral-600 dark:text-neutral-400">Spots:</span>
+                      <span className={`font-semibold ${
+                        event.current_attendees >= event.max_attendees 
+                          ? 'text-error-600 dark:text-error-400' 
+                          : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {event.max_attendees - event.current_attendees}/{event.max_attendees}
+                      </span>
                     </div>
                   </div>
+
+                  {/* Register Button */}
+                  <button
+                    onClick={() => handleOpenJoinModal(event)}
+                    disabled={
+                      isPastEvent(event) ||
+                      event.isRegistered ||
+                      balance < event.points_cost ||
+                      event.current_attendees >= event.max_attendees
+                    }
+                    className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-opacity ${
+                      isPastEvent(event) ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed' :
+                      event.isRegistered ? 'bg-accent-100 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300' :
+                      event.current_attendees >= event.max_attendees ? 'bg-error-100 dark:bg-error-900/30 text-error-700 dark:text-error-300' :
+                      balance < event.points_cost ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 cursor-not-allowed' :
+                      'gradient-primary text-white hover:opacity-90'
+                    }`}
+                  >
+                    {isPastEvent(event)
+                      ? 'Event Ended'
+                      : event.isRegistered
+                      ? '✓ Registered'
+                      : 'Register'}
+                  </button>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
+        )}
+      </section>
 
-          {/* Navigation Buttons */}
-          <button
-            onClick={handlePrevious}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-white/90 sm:bg-white/10 sm:backdrop-blur-sm text-primary-900 sm:text-white p-3 sm:p-4 rounded-full hover:bg-white sm:hover:bg-white/20 transition-colors border-2 border-white shadow-lg sm:shadow-none z-30"
-            aria-label="Previous event"
-          >
-            <svg className="w-6 h-6 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={handleNext}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-white/90 sm:bg-white/10 sm:backdrop-blur-sm text-primary-900 sm:text-white p-3 sm:p-4 rounded-full hover:bg-white sm:hover:bg-white/20 transition-colors border-2 border-white shadow-lg sm:shadow-none z-30"
-            aria-label="Next event"
-          >
-            <svg className="w-6 h-6 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+      {showEventModal && selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                  {selectedEvent.title}
+                </h3>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400 inline-flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">location_on</span>
+                  <span>{selectedEvent.location}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEventModal(false)}
+                className="rounded-full border border-neutral-200 p-2 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-800 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                aria-label="Close details"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm text-neutral-700 dark:text-neutral-300">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500">Date</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                  {new Date(selectedEvent.event_date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500">Cost</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                  {selectedEvent.points_cost.toLocaleString()} pts
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500">Spots</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                  {selectedEvent.max_attendees - selectedEvent.current_attendees}/{selectedEvent.max_attendees}
+                </span>
+              </div>
+              {selectedEvent.description && (
+                <div className="pt-3">
+                  <p className="text-neutral-500">Description</p>
+                  <p className="mt-1 leading-relaxed text-neutral-800 dark:text-neutral-200">
+                    {selectedEvent.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Indicators */}
-        <div className="flex justify-center gap-2 mt-6 sm:mt-8">
-          {events.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                index === currentIndex ? 'w-6 sm:w-8 bg-white' : 'w-1.5 sm:w-2 bg-white/30'
-              }`}
-              aria-label={`Go to event ${index + 1}`}
-            />
-          ))}
+      {showJoinModal && pendingEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowJoinModal(false);
+              setPendingEvent(null);
+            }
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                Confirm Registration
+              </h3>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                Do you want to join this event?
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-700 dark:bg-neutral-800">
+              <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                {pendingEvent.title}
+              </p>
+              <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 inline-flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm">location_on</span>
+                <span>{pendingEvent.location}</span>
+              </p>
+              <p className="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
+                Cost: <span className="font-semibold">{pendingEvent.points_cost.toLocaleString()} pts</span>
+              </p>
+            </div>
+
+            <p className="mt-3 text-xs text-neutral-600 dark:text-neutral-400">
+              By confirming, the points used for this registration are non-refundable.
+            </p>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowJoinModal(false);
+                  setPendingEvent(null);
+                }}
+                disabled={isJoining}
+                className="flex-1 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleConfirmJoin}
+                disabled={isJoining}
+                className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                {isJoining ? 'Processing...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </div>
-
-        <p className="text-center text-white/60 mt-3 sm:mt-4 text-xs sm:text-sm">
-          <span className="block sm:inline">Swipe or use arrow keys to navigate</span>
-          <span className="hidden sm:inline"> • </span>
-          <span className="block sm:inline mt-1 sm:mt-0">Click buttons to browse events</span>
-        </p>
-      </div>
+      )}
     </div>
   );
 }

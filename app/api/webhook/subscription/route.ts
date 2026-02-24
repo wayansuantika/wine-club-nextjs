@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WebhookDB, SubscriptionDB, PaymentDB, PointsDB, UserDB } from '@/lib/db/mongodb';
+import { getSubscriptionPlanByCode, getAllSubscriptionPlans } from '@/lib/server/subscriptionPlansStore';
 
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN;
-const MONTHLY_POINTS = 6500000; // 6.5M points per month
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +35,26 @@ export async function POST(request: NextRequest) {
           const subscription = await SubscriptionDB.findByXenditId(xenditSubscriptionId);
 
           if (subscription) {
+            // Find matching plan by amount (or use first available)
+            let subscriptionPlan = null;
+            const planCode = payload.metadata?.subscription_plan_code;
+            
+            if (planCode) {
+              subscriptionPlan = await getSubscriptionPlanByCode(planCode);
+            }
+            
+            if (!subscriptionPlan) {
+              // Try to match by amount
+              const allPlans = await getAllSubscriptionPlans();
+              subscriptionPlan = allPlans.find(p => p.amount === subscription.amount);
+            }
+            
+            if (!subscriptionPlan) {
+              // Use first plan as fallback
+              const allPlans = await getAllSubscriptionPlans();
+              subscriptionPlan = allPlans[0];
+            }
+
             // Update subscription status
             await SubscriptionDB.updateStatus(
               subscription._id.toString(),
@@ -56,11 +76,14 @@ export async function POST(request: NextRequest) {
               paid_at: new Date()
             });
 
-            // Add monthly points
+            // Add monthly points + bonus points
+            const totalPoints = subscriptionPlan.pointsPerMonth + subscriptionPlan.bonusPoints;
             await PointsDB.addPoints(
               subscription.user_id.toString(),
-              MONTHLY_POINTS,
-              'Monthly subscription points',
+              totalPoints,
+              subscriptionPlan.bonusPoints > 0 
+                ? `Monthly subscription: ${subscriptionPlan.pointsPerMonth.toLocaleString()} points + ${subscriptionPlan.bonusPoints.toLocaleString()} bonus`
+                : `Monthly subscription: ${subscriptionPlan.pointsPerMonth.toLocaleString()} points`,
               subscription._id.toString()
             );
           }

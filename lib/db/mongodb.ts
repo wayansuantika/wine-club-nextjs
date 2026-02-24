@@ -110,6 +110,11 @@ export const SubscriptionDB = {
   getAll: async () => {
     await connectDB();
     return await models.Subscription.find().populate('user_id').sort({ created_at: -1 });
+  },
+
+  deleteById: async (subscriptionId: string) => {
+    await connectDB();
+    return await models.Subscription.findByIdAndDelete(subscriptionId);
   }
 };
 
@@ -339,6 +344,13 @@ export const EventDB = {
       .sort({ registered_at: -1 });
   },
 
+  getEventRegistrations: async (eventId: string) => {
+    await connectDB();
+    return await models.EventRegistration.find({ event_id: eventId })
+      .populate('user_id', 'email full_name')
+      .sort({ registered_at: -1 });
+  },
+
   register: async (userId: string, eventId: string, pointsSpent: number) => {
     await connectDB();
 
@@ -357,11 +369,30 @@ export const EventDB = {
       throw new Error('Event is full');
     }
 
+    // Generate unique reservation code
+    let reservationCode = '';
+    let isUnique = false;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    
+    while (!isUnique) {
+      reservationCode = 'RES-';
+      for (let i = 0; i < 8; i++) {
+        reservationCode += chars[Math.floor(Math.random() * chars.length)];
+      }
+      
+      // Check if code already exists
+      const existingCode = await models.EventRegistration.findOne({ reservation_code: reservationCode });
+      if (!existingCode) {
+        isUnique = true;
+      }
+    }
+
     // Register
     const registration = new models.EventRegistration({
       user_id: userId,
       event_id: eventId,
-      points_spent: pointsSpent
+      points_spent: pointsSpent,
+      reservation_code: reservationCode
     });
     await registration.save();
 
@@ -427,5 +458,28 @@ export const AdminDB = {
       totalEvents,
       upcomingEvents
     };
+  }
+};
+
+// App Config operations
+export const AppConfigDB = {
+  getByKey: async (key: string) => {
+    await connectDB();
+    return await models.AppConfig.findOne({ key });
+  },
+
+  upsert: async (key: string, value: any, updatedBy?: string) => {
+    await connectDB();
+    return await models.AppConfig.findOneAndUpdate(
+      { key },
+      {
+        $set: {
+          value,
+          updated_at: new Date(),
+          ...(updatedBy ? { updated_by: updatedBy } : {})
+        }
+      },
+      { upsert: true, new: true }
+    );
   }
 };

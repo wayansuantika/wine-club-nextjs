@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
-});
+}, { collection: 'Users' });
 
 // Subscription Schema
 const subscriptionSchema = new mongoose.Schema({
@@ -30,6 +30,7 @@ const subscriptionSchema = new mongoose.Schema({
   xendit_subscription_id: { type: String, unique: true },
   xendit_customer_id: { type: String },
   plan_id: { type: String },
+  plan_code: { type: String },
   status: {
     type: String,
     enum: ['PENDING', 'ACTIVE', 'INACTIVE', 'CANCELLED'],
@@ -40,9 +41,10 @@ const subscriptionSchema = new mongoose.Schema({
   interval_count: { type: Number, default: 1 },
   start_date: { type: Date },
   next_payment_date: { type: Date },
+  payment_url: { type: String },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
-});
+}, { collection: 'Subscriptions' });
 
 // Points Schema
 const pointsSchema = new mongoose.Schema({
@@ -51,7 +53,7 @@ const pointsSchema = new mongoose.Schema({
   total_earned: { type: Number, default: 0 },
   total_spent: { type: Number, default: 0 },
   last_updated: { type: Date, default: Date.now }
-});
+}, { collection: 'Points' });
 
 // Points History Schema
 const pointsHistorySchema = new mongoose.Schema({
@@ -65,7 +67,7 @@ const pointsHistorySchema = new mongoose.Schema({
   description: { type: String },
   reference_id: { type: String },
   created_at: { type: Date, default: Date.now }
-});
+}, { collection: 'PointsHistory' });
 
 // Payment Schema
 const paymentSchema = new mongoose.Schema({
@@ -81,7 +83,7 @@ const paymentSchema = new mongoose.Schema({
   payment_method: { type: String },
   paid_at: { type: Date },
   created_at: { type: Date, default: Date.now }
-});
+}, { collection: 'Payments' });
 
 // Webhook Log Schema
 const webhookLogSchema = new mongoose.Schema({
@@ -92,7 +94,7 @@ const webhookLogSchema = new mongoose.Schema({
   processed: { type: Boolean, default: false },
   error: { type: String },
   created_at: { type: Date, default: Date.now }
-});
+}, { collection: 'Webhooks' });
 
 // Admin Log Schema
 const adminLogSchema = new mongoose.Schema({
@@ -102,7 +104,7 @@ const adminLogSchema = new mongoose.Schema({
   target_id: { type: String },
   details: { type: mongoose.Schema.Types.Mixed },
   created_at: { type: Date, default: Date.now }
-});
+}, { collection: 'AdminLogs' });
 
 // Event Schema
 const eventSchema = new mongoose.Schema({
@@ -120,20 +122,29 @@ const eventSchema = new mongoose.Schema({
     default: 'UPCOMING'
   },
   created_at: { type: Date, default: Date.now }
-});
+}, { collection: 'Events' });
 
 // Event Registration Schema
 const eventRegistrationSchema = new mongoose.Schema({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   points_spent: { type: Number, required: true },
+  reservation_code: { type: String, required: true, unique: true },
   status: {
     type: String,
     enum: ['REGISTERED', 'ATTENDED', 'CANCELLED'],
     default: 'REGISTERED'
   },
   registered_at: { type: Date, default: Date.now }
-});
+}, { collection: 'EventRegistrations' });
+
+// App Config Schema
+const appConfigSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: mongoose.Schema.Types.Mixed, required: true },
+  updated_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updated_at: { type: Date, default: Date.now }
+}, { collection: 'AppConfig' });
 
 // Create indexes
 eventRegistrationSchema.index({ user_id: 1, event_id: 1 }, { unique: true });
@@ -148,3 +159,4 @@ export const WebhookLog = mongoose.models.WebhookLog || mongoose.model('WebhookL
 export const AdminLog = mongoose.models.AdminLog || mongoose.model('AdminLog', adminLogSchema);
 export const Event = mongoose.models.Event || mongoose.model('Event', eventSchema);
 export const EventRegistration = mongoose.models.EventRegistration || mongoose.model('EventRegistration', eventRegistrationSchema);
+export const AppConfig = mongoose.models.AppConfig || mongoose.model('AppConfig', appConfigSchema);

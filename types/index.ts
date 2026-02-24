@@ -51,6 +51,8 @@ export interface EventRegistration {
   _id: string;
   user_id: string;
   event_id: string;
+  points_spent: number;
+  reservation_code: string;
   registration_date: Date;
   status: 'REGISTERED' | 'ATTENDED' | 'CANCELLED';
 }

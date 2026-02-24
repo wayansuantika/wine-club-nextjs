@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { apiCall } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
+import { formatIdrCompactMillions, formatPointsCompact, getSubscriptionPlan, type SubscriptionPlan } from '@/lib/subscriptionPlan';
 
 interface ProfileData {
   user: {
@@ -31,10 +32,29 @@ interface ProfileData {
   } | null;
 }
 
+interface EventRegistration {
+  registration_id: string;
+  reservation_code: string;
+  points_spent: number;
+  status: string;
+  registered_at: string;
+  event: {
+    id: string;
+    title: string;
+    location: string;
+    event_date: string;
+    points_cost: number;
+    status: string;
+  };
+}
+
 export default function ProfilePage() {
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([getSubscriptionPlan()]);
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null);
   const router = useRouter();
   const { user, token, loadAuth, clearAuth } = useAuthStore();
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -44,6 +64,26 @@ export default function ProfilePage() {
     loadAuth();
     setAuthChecked(true);
   }, [loadAuth]);
+
+  useEffect(() => {
+    const fetchSubscriptionPlans = async () => {
+      try {
+        const response = await fetch('/api/subscription/plan');
+        const data = await response.json();
+
+        if (response.ok && data.plans && Array.isArray(data.plans)) {
+          setSubscriptionPlans(data.plans);
+          if (data.plans.length > 0) {
+            setSelectedPlanCode(data.plans[0].code);
+          }
+        }
+      } catch (error) {
+        console.error('Subscription plans fetch error:', error);
+      }
+    };
+
+    fetchSubscriptionPlans();
+  }, []);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -71,6 +111,11 @@ export default function ProfilePage() {
       }
 
       setProfile(data);
+
+      // Fetch registrations if user is active member
+      if (data.user.status === 'ACTIVE_MEMBER') {
+        fetchRegistrations();
+      }
     } catch (error) {
       console.error('Profile fetch error:', error);
       toast.error('An error occurred while fetching profile');
@@ -79,19 +124,45 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchRegistrations = async () => {
+    try {
+      const response = await apiCall('/api/profile/registrations');
+      const data = await response.json();
+
+      if (response.ok) {
+        setRegistrations(data.registrations);
+      }
+    } catch (error) {
+      console.error('Registrations fetch error:', error);
+    }
+  };
+
   const handleSubscribe = async () => {
+    if (!selectedPlanCode) {
+      toast.error('Please select a subscription plan');
+      return;
+    }
+
     setIsProcessing(true);
     try {
+      console.log('📤 Sending subscription request with plan:', selectedPlanCode);
+      
       const response = await apiCall('/api/subscription/create', {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify({ plan_code: selectedPlanCode })
       });
 
       const data = await response.json();
+      console.log('📥 Subscription response:', { status: response.status, data });
 
       if (!response.ok) {
-        toast.error(data.error || 'Failed to create subscription');
+        const errorMsg = data.error || 'Failed to create subscription';
+        console.error('❌ Subscription error:', errorMsg);
+        toast.error(errorMsg);
         return;
       }
+
+      console.log('✅ Subscription created successfully');
 
       // Redirect to Xendit payment page
       if (data.payment_url) {
@@ -106,7 +177,7 @@ export default function ProfilePage() {
         window.location.reload();
       }
     } catch (error) {
-      console.error('Subscription creation error:', error);
+      console.error('❌ Subscription creation error:', error);
       toast.error('An error occurred while creating subscription');
     } finally {
       setIsProcessing(false);
@@ -218,10 +289,13 @@ export default function ProfilePage() {
 
               <div>
                 <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Status</label>
-                <p className={`text-lg font-semibold ${
+                <p className={`text-lg font-semibold inline-flex items-center gap-2 ${
                   isActiveMember ? 'text-accent-500' : 'text-neutral-600 dark:text-neutral-400'
                 }`}>
-                  {profile.user.status === 'ACTIVE_MEMBER' ? '🎉 Active Member' : '👋 Guest'}
+                  <span className="material-symbols-outlined text-base">
+                    {profile.user.status === 'ACTIVE_MEMBER' ? 'celebration' : 'person'}
+                  </span>
+                  <span>{profile.user.status === 'ACTIVE_MEMBER' ? 'Active Member' : 'Guest'}</span>
                 </p>
               </div>
 
@@ -308,7 +382,9 @@ export default function ProfilePage() {
             ) : (
               <div className="text-center py-8">
                 <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                  {isGuest ? "You don't have an active subscription" : "Your subscription is not active"}
+                  {isGuest
+                    ? "You are currently a guest. To view and register for events, please start a subscription."
+                    : "Your subscription is not active"}
                 </p>
                 <button
                   onClick={() => setShowModal(true)}
@@ -319,6 +395,70 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Registered Events Card - Only for Active Members */}
+          {isActiveMember && registrations.length > 0 && (
+            <div className="md:col-span-2 bg-white dark:bg-neutral-900 rounded-xl sm:rounded-2xl shadow-2xl p-6 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-primary-700 dark:text-primary-400 mb-4 sm:mb-6">
+                My Registered Events
+              </h2>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-neutral-100 dark:bg-neutral-800">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                        Event Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                        Location
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                        Point Cost
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                        Reservation ID
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                    {registrations.map((reg) => (
+                      <tr key={reg.registration_id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                        <td className="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100 font-medium">
+                          {reg.event.title}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+                          {reg.event.location}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+                          {new Date(reg.event.event_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400">
+                          {reg.points_spent.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-primary-600 dark:text-primary-400 font-semibold">
+                          {reg.reservation_code}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {registrations.length === 0 && (
+                <div className="text-center py-8 text-neutral-600 dark:text-neutral-400">
+                  No registered events yet. Browse events to start!
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
 
@@ -333,9 +473,9 @@ export default function ProfilePage() {
                   Are you sure you want to cancel your subscription? You will lose access to:
                 </p>
                 <ul className="space-y-2 text-neutral-600 dark:text-neutral-400 mb-6">
-                  <li>• Monthly 6.5M points</li>
+                  <li>• Monthly subscription benefits</li>
                   <li>• Event registration access</li>
-                  <li>• Member-only benefits</li>
+                  <li>• Member-only discounts</li>
                 </ul>
                 <div className="flex gap-4">
                   <button
@@ -357,32 +497,66 @@ export default function ProfilePage() {
             ) : (
               <>
                 <h3 className="text-2xl font-bold text-primary-700 dark:text-primary-400 mb-4">
-                  Subscribe to Wine Club
+                  Choose Plan
                 </h3>
-                <div className="text-center py-6 mb-6 bg-primary-50 dark:bg-primary-900/20 rounded-xl">
-                  <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">
-                    IDR 1.5M
-                  </div>
-                  <p className="text-neutral-600 dark:text-neutral-400">per month</p>
+                <p className="text-neutral-600 dark:text-neutral-400 text-center mb-6 text-sm">
+                  Select which subscription plan you'd like to subscribe to
+                </p>
+
+                {/* Plans Grid */}
+                <div className="grid gap-3 mb-6">
+                  {subscriptionPlans.map((plan) => (
+                    <div
+                      key={plan.code}
+                      onClick={() => setSelectedPlanCode(plan.code)}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                        selectedPlanCode === plan.code
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 hover:border-primary-300 dark:hover:border-primary-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-neutral-900 dark:text-neutral-100">{plan.shortName}</h4>
+                        <span className="text-primary-600 dark:text-primary-400 font-bold">
+                          {formatIdrCompactMillions(plan.amount)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm mb-2">
+                        <span className="text-accent-600 dark:text-accent-400 font-semibold">
+                          {formatPointsCompact(plan.pointsPerMonth)} pts
+                        </span>
+                        {plan.bonusPoints > 0 && (
+                          <span className="text-green-600 dark:text-green-400 font-semibold">
+                            + {formatPointsCompact(plan.bonusPoints)} bonus
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-neutral-600 dark:text-neutral-400">{plan.description}</p>
+                    </div>
+                  ))}
                 </div>
-                <ul className="space-y-3 text-neutral-700 dark:text-neutral-300 mb-6">
-                  <li className="flex items-start gap-2">
-                    <span className="text-accent-500 mt-1">✓</span>
-                    <span>6.5 million points monthly</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-accent-500 mt-1">✓</span>
-                    <span>Access to all exclusive events</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-accent-500 mt-1">✓</span>
-                    <span>Priority event registration</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-accent-500 mt-1">✓</span>
-                    <span>Member-only wine tastings</span>
-                  </li>
-                </ul>
+
+                {/* Selected Plan Details */}
+                {selectedPlanCode &&
+                  (() => {
+                    const selectedPlan = subscriptionPlans.find((p) => p.code === selectedPlanCode);
+                    return selectedPlan ? (
+                      <div className="bg-accent-50 dark:bg-accent-900/20 rounded-lg p-4 mb-6 border border-accent-200 dark:border-accent-800">
+                        <p className="text-xs font-semibold text-accent-700 dark:text-accent-300 uppercase tracking-wide mb-2">
+                          Benefits
+                        </p>
+                        <ul className="space-y-1.5">
+                          {selectedPlan.benefits.map((benefit, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+                              <span className="text-accent-600 dark:text-accent-400 flex-shrink-0">✓</span>
+                              <span>{benefit}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null;
+                  })()}
+
                 <div className="flex gap-4">
                   <button
                     onClick={() => setShowModal(false)}
@@ -393,10 +567,10 @@ export default function ProfilePage() {
                   </button>
                   <button
                     onClick={handleSubscribe}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !selectedPlanCode}
                     className="flex-1 gradient-primary text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50"
                   >
-                    {isProcessing ? 'Processing...' : 'Confirm'}
+                    {isProcessing ? 'Processing...' : 'Continue to Payment'}
                   </button>
                 </div>
               </>
