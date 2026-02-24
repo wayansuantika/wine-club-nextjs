@@ -655,7 +655,7 @@ export default function AdminPage() {
       </main>
 
       {/* Event Modal */}
-      {showEventModal && <EventModal event={editingEvent} token={token} onClose={() => { setShowEventModal(false); setEditingEvent(null); }} onCreate={handleCreateEvent} onUpdate={handleUpdateEvent} />}
+      {showEventModal && <EventModal event={editingEvent} onClose={() => { setShowEventModal(false); setEditingEvent(null); }} onCreate={handleCreateEvent} onUpdate={handleUpdateEvent} />}
 
       {showRegistrationsModal && registrationsEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -729,15 +729,12 @@ export default function AdminPage() {
 }
 
 // Event Modal Component
-function EventModal({ event, token, onClose, onCreate, onUpdate }: { 
+function EventModal({ event, onClose, onCreate, onUpdate }: {
   event: Event | null;
-  token: string | null;
-  onClose: () => void; 
+  onClose: () => void;
   onCreate?: (data: EventFormData) => void;
   onUpdate?: (eventId: string, data: EventFormData) => void;
 }) {
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: event?.title || '',
     description: event?.description || '',
@@ -748,50 +745,6 @@ function EventModal({ event, token, onClose, onCreate, onUpdate }: {
     image_url: event?.image_url || '',
     status: event?.status || 'UPCOMING'
   });
-
-  const handleUploadImage = async () => {
-    if (!token) {
-      alert('Authentication required');
-      return;
-    }
-
-    if (!uploadFile) {
-      alert('Please choose an image first');
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', uploadFile);
-      if (formData.image_url) {
-        fd.append('oldUrl', formData.image_url);
-      }
-
-      const response = await fetch('/api/admin/events/upload', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: fd
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        alert(data.error || 'Upload failed');
-        return;
-      }
-
-      setFormData({ ...formData, image_url: data.url });
-      setUploadFile(null);
-      alert('Image uploaded');
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('Upload failed');
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -839,23 +792,7 @@ function EventModal({ event, token, onClose, onCreate, onUpdate }: {
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Image URL <span className="text-xs text-neutral-500">(optional)</span></label>
-            <div className="space-y-2">
-              <input type="text" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100" placeholder="Enter image URL or upload below" />
-              <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-3 space-y-2 border border-neutral-200 dark:border-neutral-700">
-                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Or upload an image:</p>
-                <div className="flex gap-2">
-                  <input type="file" accept="image/*" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 text-sm" />
-                  <button type="button" onClick={handleUploadImage} disabled={isUploading} className="px-3 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
-                    {isUploading ? 'Uploading...' : 'Upload'}
-                  </button>
-                </div>
-                <div className="text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-900 rounded p-2 space-y-1">
-                  <p className="font-medium">📐 Recommended: 800×600px or 1200×900px (landscape or square)</p>
-                  <p>💾 Max file size: 10MB • Formats: JPG, PNG, WEBP, GIF</p>
-                  <p>💡 Tip: Smaller files load faster. Aim for &lt;1MB</p>
-                </div>
-              </div>
-            </div>
+            <input type="text" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100" placeholder="https://example.com/image.jpg" />
           </div>
           <div>
             <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Status</label>

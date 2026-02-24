@@ -16,8 +16,6 @@ interface AuthBannersConfig {
   registerFallback: string;
 }
 
-type BannerField = keyof AuthBannersConfig;
-
 export default function AdminAuthBannersSettingsPage() {
   const router = useRouter();
   const { user, token, loadAuth, clearAuth } = useAuthStore();
@@ -25,9 +23,6 @@ export default function AdminAuthBannersSettingsPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadField, setUploadField] = useState<BannerField>('loginMobile');
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const [bannersForm, setBannersForm] = useState<AuthBannersConfig>({
     loginMobile: '',
@@ -106,55 +101,6 @@ export default function AdminAuthBannersSettingsPage() {
     }
   };
 
-  const handleUpload = async () => {
-    if (!token) {
-      toast.error('Authentication required');
-      router.push('/login');
-      return;
-    }
-
-    if (!uploadFile) {
-      toast.error('Please choose an image file first');
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('field', uploadField);
-      formData.append('file', uploadFile);
-
-      const response = await fetch('/api/admin/ui/auth-banners/upload', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error(data.error || 'Failed to upload image');
-        return;
-      }
-
-      setBannersForm((prev) => ({
-        ...prev,
-        [uploadField]: data.url
-      }));
-
-      setUploadFile(null);
-      toast.success('Image uploaded. Save Banner URLs to persist changes.');
-    } catch (error) {
-      console.error('Banner upload error:', error);
-      toast.error('Failed to upload image');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleLogout = () => {
     clearAuth();
     toast.success('Logged out successfully');
@@ -192,55 +138,6 @@ export default function AdminAuthBannersSettingsPage() {
         ) : (
           <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
             <form onSubmit={handleSave} className="space-y-5">
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 bg-neutral-50 dark:bg-neutral-800/50">
-                <h2 className="text-lg font-bold text-primary-700 dark:text-primary-400 mb-3">Upload Banner Image</h2>
-                <div className="grid md:grid-cols-3 gap-3 items-end">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Target Field</label>
-                    <select
-                      value={uploadField}
-                      onChange={(e) => setUploadField(e.target.value as BannerField)}
-                      className="w-full px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
-                    >
-                      <option value="loginMobile">Login Mobile</option>
-                      <option value="loginDesktop">Login Desktop</option>
-                      <option value="loginFallback">Login Fallback</option>
-                      <option value="registerMobile">Register Mobile</option>
-                      <option value="registerDesktop">Register Desktop</option>
-                      <option value="registerFallback">Register Fallback</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">Image File</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={isUploading}
-                    className="gradient-primary text-white px-4 py-2 rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50"
-                  >
-                    {isUploading ? 'Uploading...' : 'Upload Image'}
-                  </button>
-                </div>
-                <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-2 bg-neutral-100 dark:bg-neutral-900 rounded p-2 space-y-1">
-                  <p className="font-medium">📐 Recommended Dimensions:</p>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    <li><strong>Mobile (Login/Register):</strong> 1080×1920px (9:16 aspect)</li>
-                    <li><strong>Desktop (Login/Register):</strong> 1200×800px (3:2 aspect)</li>
-                  </ul>
-                  <p className="mt-1">💾 Max: 5MB • Formats: JPG, PNG, WEBP, GIF</p>
-                  <p>💡 Optimize with tools like TinyPNG or ImageOptim to reduce file size</p>
-                </div>
-              </div>
-
               <h2 className="text-lg font-bold text-primary-700 dark:text-primary-400">Login Page</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
