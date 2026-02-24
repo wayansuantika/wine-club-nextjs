@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     // Count registrations WITH codes
     const withCode = await models.EventRegistration.countDocuments({
-      reservation_code: { $exists: true, $ne: null, $ne: '' }
+      reservation_code: { $exists: true, $nin: [null, ''] }
     });
     console.log('[Test] With codes:', withCode);
 

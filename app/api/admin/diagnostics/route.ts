@@ -21,6 +21,12 @@ export async function GET(request: NextRequest) {
     }
 
     const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { success: false, error: 'Database connection is not available' },
+        { status: 500 }
+      );
+    }
     
     // List all collections
     const collections = await db.listCollections().toArray();
